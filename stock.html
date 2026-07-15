@@ -25,13 +25,13 @@
                 <h2 class="text-2xl font-bold mb-6">Manajemen Stok</h2>
 
                 <!-- Tab Navigation -->
-                <div class="flex gap-4 mb-6">
+                <div class="flex flex-wrap gap-2 mb-6">
                     <button onclick="showTab('stock-levels')" id="tab-stock-levels-btn"
-                        class="px-4 py-2 bg-blue-600 text-white rounded-md">Stok Saat Ini</button>
+                        class="px-3 py-2 text-sm bg-blue-600 text-white rounded-md">Stok Saat Ini</button>
                     <button onclick="showTab('adjustment')" id="tab-adjustment-btn"
-                        class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Adjustment</button>
+                        class="px-3 py-2 text-sm bg-gray-200 rounded-md hover:bg-gray-300">Adjustment</button>
                     <button onclick="showTab('logs')" id="tab-logs-btn"
-                        class="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300">Riwayat</button>
+                        class="px-3 py-2 text-sm bg-gray-200 rounded-md hover:bg-gray-300">Riwayat</button>
                 </div>
 
                 <!-- Tab: Stock Levels -->
@@ -125,7 +125,7 @@
             ['stock-levels', 'adjustment', 'logs'].forEach(function(t) {
                 document.getElementById('tab-' + t).classList.toggle('hidden', t !== tab);
                 var btn = document.getElementById('tab-' + t + '-btn');
-                btn.className = 'px-4 py-2 rounded-md ' +
+                btn.className = 'px-3 py-2 text-sm rounded-md ' +
                     (t === tab ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300');
             });
             if (tab === 'stock-levels') loadStockLevels();
