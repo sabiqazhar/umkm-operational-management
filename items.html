@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barang - UMKM POS</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="static/js/config.js"></script>
+    <script src="static/js/api.js"></script>
+    <script src="static/js/auth.js"></script>
+    <style>
+        #sidebar { transition: transform 0.2s ease; }
+        @media (min-width: 768px) { #sidebar { transform: translateX(0); } }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex">
+    <div id="sidebar-container" hx-trigger="load" hx-get="partials/sidebar.html" hx-swap="innerHTML"></div>
+
+    <div class="flex-1 flex flex-col min-h-screen">
+        <div id="navbar-container" hx-trigger="load" hx-get="partials/navbar.html" hx-swap="innerHTML"></div>
+
+        <main class="flex-1 p-6">
+            <div class="max-w-7xl mx-auto">
+                <!-- Header -->
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Master Barang</h2>
+                    <button onclick="openItemModal()"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+                        + Tambah Barang
+                    </button>
+                </div>
+
+                <!-- Search -->
+                <div class="bg-white p-4 rounded-lg shadow-sm mb-6">
+                    <input type="text" id="search-input" placeholder="Cari barang..."
+                        onkeyup="searchItems(this.value)"
+                        class="w-full px-4 py-2 border rounded-md">
+                </div>
+
+                <!-- Items Table -->
+                <div class="bg-white rounded-lg shadow-sm overflow-x-auto">
+                    <table class="w-full min-w-[600px]">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Barcode</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nama</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kategori</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Harga Jual</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Stok</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="items-table" class="divide-y divide-gray-200">
+                            <tr><td colspan="7" class="px-4 py-8 text-center text-gray-400" id="items-loading">Memuat...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Delete confirmation hidden -->
+                <div id="delete-confirm" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div class="bg-white p-6 rounded-lg w-96">
+                        <h3 class="text-lg font-bold mb-4">Hapus Barang</h3>
+                        <p class="mb-4">Yakin ingin menghapus barang ini?</p>
+                        <input type="hidden" id="delete-item-id">
+                        <div class="flex gap-2">
+                            <button onclick="closeDeleteConfirm()" class="flex-1 bg-gray-300 py-2 rounded-md">Batal</button>
+                            <button onclick="confirmDelete()" class="flex-1 bg-red-600 text-white py-2 rounded-md">Hapus</button>
+                        </div>
+                        <div id="delete-result" class="mt-2 text-sm"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Item Form Modal -->
+    <div id="item-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg w-full max-w-md mx-4">
+            <h3 class="text-lg font-bold mb-4" id="modal-title">Tambah Barang</h3>
+            <form id="item-form" class="space-y-3">
+                <input type="hidden" name="item_id" id="form-item-id">
+                <div>
+                    <label class="block text-sm font-medium">Barcode</label>
+                    <input type="text" name="barcode" id="form-barcode" required
+                        class="w-full border rounded-md px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Nama Barang</label>
+                    <input type="text" name="nama_barang" id="form-nama" required
+                        class="w-full border rounded-md px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Kategori</label>
+                    <input type="text" name="kategori" id="form-kategori"
+                        class="w-full border rounded-md px-3 py-2">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-sm font-medium">Harga Beli</label>
+                        <input type="number" name="harga_beli" id="form-harga-beli"
+                            class="w-full border rounded-md px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium">Harga Jual</label>
+                        <input type="number" name="harga_jual" id="form-harga-jual" required
+                            class="w-full border rounded-md px-3 py-2">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium">Stok Awal</label>
+                    <input type="number" name="stok_sekarang" id="form-stok"
+                        class="w-full border rounded-md px-3 py-2">
+                </div>
+            </form>
+            <div class="flex gap-2 mt-4">
+                <button onclick="closeItemModal()" class="flex-1 bg-gray-300 py-2 rounded-md">Batal</button>
+                <button onclick="saveItem()" class="flex-1 bg-blue-600 text-white py-2 rounded-md">Simpan</button>
+            </div>
+            <div id="item-result" class="mt-2 text-sm"></div>
+        </div>
+    </div>
+
+    <script>
+        var GAS_URL = GAS_API_URL; // from api.js
+        var allItems = [];
+
+        // ── Load items ──────────────────────────────────────────────────────
+        function loadItems() {
+            document.getElementById('items-loading').textContent = 'Memuat...';
+            callGAS('READ_ITEMS', {}).then(function(res) {
+                if (res.success && res.data) {
+                    allItems = res.data;
+                    renderItems(allItems);
+                } else {
+                    document.getElementById('items-table').innerHTML =
+                        '<tr><td colspan="7" class="px-4 py-8 text-center text-red-500">Gagal memuat data</td></tr>';
+                }
+            });
+        }
+
+        function renderItems(items) {
+            var tbody = document.getElementById('items-table');
+            if (items.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-400">Tidak ada barang</td></tr>';
+                return;
+            }
+            tbody.innerHTML = items.map(function(item) {
+                var stokClass = Number(item.stok_sekarang) <= 10 ? 'text-red-600 font-bold' : '';
+                return '<tr>' +
+                    '<td class="px-4 py-3">' + item.item_id + '</td>' +
+                    '<td class="px-4 py-3">' + item.barcode + '</td>' +
+                    '<td class="px-4 py-3">' + item.nama_barang + '</td>' +
+                    '<td class="px-4 py-3">' + (item.kategori || '-') + '</td>' +
+                    '<td class="px-4 py-3">Rp ' + Number(item.harga_jual).toLocaleString() + '</td>' +
+                    '<td class="px-4 py-3 ' + stokClass + '">' + item.stok_sekarang + '</td>' +
+                    '<td class="px-4 py-3">' +
+                        '<button onclick="editItem(' + item.item_id + ')" class="text-blue-600 hover:text-blue-800 text-sm mr-2">Edit</button>' +
+                        '<button onclick="showDelete(' + item.item_id + ')" class="text-red-600 hover:text-red-800 text-sm">Hapus</button>' +
+                    '</td>' +
+                '</tr>';
+            }).join('');
+        }
+
+        // ── Search ──────────────────────────────────────────────────────────
+        function searchItems(q) {
+            if (!q) { renderItems(allItems); return; }
+            var lower = q.toLowerCase();
+            var filtered = allItems.filter(function(item) {
+                return (item.nama_barang && item.nama_barang.toLowerCase().indexOf(lower) !== -1) ||
+                       (item.barcode && item.barcode.indexOf(q) !== -1);
+            });
+            renderItems(filtered);
+        }
+
+        // ── Add / Edit modal ────────────────────────────────────────────────
+        function openItemModal(item) {
+            document.getElementById('item-modal').classList.remove('hidden');
+            document.getElementById('item-result').textContent = '';
+            if (item) {
+                document.getElementById('modal-title').textContent = 'Edit Barang';
+                document.getElementById('form-item-id').value = item.item_id;
+                document.getElementById('form-barcode').value = item.barcode;
+                document.getElementById('form-nama').value = item.nama_barang;
+                document.getElementById('form-kategori').value = item.kategori || '';
+                document.getElementById('form-harga-beli').value = item.harga_beli || '';
+                document.getElementById('form-harga-jual').value = item.harga_jual || '';
+                document.getElementById('form-stok').value = item.stok_sekarang || '';
+            } else {
+                document.getElementById('modal-title').textContent = 'Tambah Barang';
+                document.getElementById('form-item-id').value = '';
+                document.getElementById('form-barcode').value = '';
+                document.getElementById('form-nama').value = '';
+                document.getElementById('form-kategori').value = '';
+                document.getElementById('form-harga-beli').value = '';
+                document.getElementById('form-harga-jual').value = '';
+                document.getElementById('form-stok').value = '';
+            }
+        }
+
+        function closeItemModal() {
+            document.getElementById('item-modal').classList.add('hidden');
+        }
+
+        function saveItem() {
+            var itemId = document.getElementById('form-item-id').value;
+            var isEdit = !!itemId;
+            var payload = {
+                barcode: document.getElementById('form-barcode').value,
+                nama_barang: document.getElementById('form-nama').value,
+                kategori: document.getElementById('form-kategori').value,
+                harga_beli: document.getElementById('form-harga-beli').value,
+                harga_jual: document.getElementById('form-harga-jual').value,
+                stok_sekarang: document.getElementById('form-stok').value
+            };
+
+            if (isEdit) {
+                payload.item_id = itemId;
+            }
+
+            var action = isEdit ? 'UPDATE_ITEM' : 'CREATE_ITEM';
+            var btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Menyimpan...';
+
+            callGAS(action, payload).then(function(res) {
+                btn.disabled = false;
+                btn.textContent = 'Simpan';
+                if (res.success) {
+                    closeItemModal();
+                    loadItems();
+                } else {
+                    document.getElementById('item-result').innerHTML =
+                        '<span class="text-red-600">' + (res.message || 'Gagal menyimpan') + '</span>';
+                }
+            });
+        }
+
+        function editItem(itemId) {
+            var item = allItems.find(function(i) { return i.item_id == itemId; });
+            if (item) openItemModal(item);
+        }
+
+        // ── Delete ──────────────────────────────────────────────────────────
+        var deleteItemId = null;
+
+        function showDelete(itemId) {
+            deleteItemId = itemId;
+            document.getElementById('delete-confirm').classList.remove('hidden');
+            document.getElementById('delete-result').textContent = '';
+        }
+
+        function closeDeleteConfirm() {
+            document.getElementById('delete-confirm').classList.add('hidden');
+            deleteItemId = null;
+        }
+
+        function confirmDelete() {
+            if (!deleteItemId) return;
+            callGAS('DELETE_ITEM', { item_id: deleteItemId }).then(function(res) {
+                if (res.success) {
+                    closeDeleteConfirm();
+                    loadItems();
+                } else {
+                    document.getElementById('delete-result').innerHTML =
+                        '<span class="text-red-600">' + (res.message || 'Gagal menghapus') + '</span>';
+                }
+            });
+        }
+
+        // ── Init ────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', loadItems);
+    </script>
+</body>
+</html>

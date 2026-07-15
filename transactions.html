@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transaksi - UMKM POS</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="static/js/config.js"></script>
+    <script src="static/js/api.js"></script>
+    <script src="static/js/auth.js"></script>
+    <style>
+        #sidebar { transition: transform 0.2s ease; }
+        @media (min-width: 768px) { #sidebar { transform: translateX(0); } }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex">
+    <div id="sidebar-container" hx-trigger="load" hx-get="partials/sidebar.html" hx-swap="innerHTML"></div>
+
+    <div class="flex-1 flex flex-col min-h-screen">
+        <div id="navbar-container" hx-trigger="load" hx-get="partials/navbar.html" hx-swap="innerHTML"></div>
+
+        <main class="flex-1 p-6">
+            <div class="max-w-7xl mx-auto">
+                <h2 class="text-2xl font-bold mb-6">Riwayat Transaksi</h2>
+
+                <!-- Date Filter -->
+                <div class="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-wrap gap-4 items-end">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Dari</label>
+                        <input type="date" id="filter-start"
+                            class="border rounded-md px-3 py-2">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sampai</label>
+                        <input type="date" id="filter-end"
+                            class="border rounded-md px-3 py-2">
+                    </div>
+                    <button onclick="loadTransactions()"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">Filter</button>
+                    <button onclick="clearFilter()"
+                        class="bg-gray-200 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-300">Reset</button>
+                </div>
+
+                <!-- Transactions Table -->
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden overflow-x-auto">
+                    <table class="w-full min-w-[600px]">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID Transaksi</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Total</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bayar</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Kembalian</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Metode</th>
+                                <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="transactions-table" class="divide-y divide-gray-200">
+                            <tr><td colspan="7" class="px-4 py-8 text-center text-gray-400" id="tx-loading">Memuat...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Detail Modal -->
+    <div id="detail-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-lg w-full max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold" id="detail-title">Detail Transaksi</h3>
+                <button onclick="closeDetail()" class="text-gray-500 hover:text-gray-700 text-xl">&times;</button>
+            </div>
+
+            <!-- Transaction Header -->
+            <div id="detail-header" class="bg-gray-50 p-4 rounded-lg mb-4 grid grid-cols-2 gap-2 text-sm"></div>
+
+            <!-- Line Items -->
+            <table class="w-full mb-4">
+                <thead>
+                    <tr class="border-b">
+                        <th class="text-left py-2 text-xs font-medium text-gray-500 uppercase">Barang</th>
+                        <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">Harga</th>
+                        <th class="text-center py-2 text-xs font-medium text-gray-500 uppercase">Qty</th>
+                        <th class="text-right py-2 text-xs font-medium text-gray-500 uppercase">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody id="detail-items" class="divide-y divide-gray-100"></tbody>
+                <tfoot>
+                    <tr class="font-bold border-t-2">
+                        <td colspan="3" class="text-right py-2">Total:</td>
+                        <td id="detail-total" class="text-right py-2"></td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div id="detail-error" class="text-sm text-red-600"></div>
+        </div>
+    </div>
+
+    <script>
+        var allTransactions = [];
+
+        // ── Load ─────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set default date range (today)
+            var today = new Date().toISOString().slice(0, 10);
+            document.getElementById('filter-start').value = today;
+            document.getElementById('filter-end').value = today;
+            loadTransactions();
+        });
+
+        function loadTransactions() {
+            document.getElementById('tx-loading').textContent = 'Memuat...';
+            var payload = {};
+            var start = document.getElementById('filter-start').value;
+            var end = document.getElementById('filter-end').value;
+            if (start) payload.start_date = start;
+            if (end) payload.end_date = end;
+
+            callGAS('READ_TRANSACTIONS', payload).then(function(res) {
+                if (res.success && res.data) {
+                    allTransactions = res.data;
+                    renderTransactions(allTransactions);
+                } else {
+                    document.getElementById('transactions-table').innerHTML =
+                        '<tr><td colspan="7" class="px-4 py-8 text-center text-red-500">Gagal memuat</td></tr>';
+                }
+            });
+        }
+
+        function renderTransactions(txs) {
+            var tbody = document.getElementById('transactions-table');
+            if (txs.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="px-4 py-8 text-center text-gray-400">Belum ada transaksi</td></tr>';
+                return;
+            }
+            tbody.innerHTML = txs.map(function(tx) {
+                return '<tr>' +
+                    '<td class="px-4 py-3 font-mono text-sm">' + tx.transaction_id + '</td>' +
+                    '<td class="px-4 py-3 text-sm">' + (tx.created_at || '').slice(0, 19).replace('T', ' ') + '</td>' +
+                    '<td class="px-4 py-3">Rp ' + Number(tx.total).toLocaleString() + '</td>' +
+                    '<td class="px-4 py-3">Rp ' + Number(tx.bayar).toLocaleString() + '</td>' +
+                    '<td class="px-4 py-3">Rp ' + Number(tx.kembalian).toLocaleString() + '</td>' +
+                    '<td class="px-4 py-3">' + (tx.metode_pembayaran || '-') + '</td>' +
+                    '<td class="px-4 py-3">' +
+                        '<button onclick="showDetail(\'' + tx.transaction_id + '\')" class="text-blue-600 hover:text-blue-800 text-sm">Detail</button>' +
+                    '</td>' +
+                '</tr>';
+            }).join('');
+        }
+
+        function clearFilter() {
+            var today = new Date().toISOString().slice(0, 10);
+            document.getElementById('filter-start').value = today;
+            document.getElementById('filter-end').value = today;
+            loadTransactions();
+        }
+
+        // ── Detail ──────────────────────────────────────────────────────────
+        function showDetail(transactionId) {
+            document.getElementById('detail-modal').classList.remove('hidden');
+            document.getElementById('detail-title').textContent = 'Transaksi ' + transactionId;
+            document.getElementById('detail-header').innerHTML = 'Memuat...';
+            document.getElementById('detail-items').innerHTML = '';
+            document.getElementById('detail-error').textContent = '';
+
+            // Get the transaction record
+            var tx = allTransactions.find(function(t) { return t.transaction_id === transactionId; });
+            if (tx) {
+                document.getElementById('detail-header').innerHTML =
+                    '<div><strong>ID:</strong> ' + tx.transaction_id + '</div>' +
+                    '<div><strong>Waktu:</strong> ' + (tx.created_at || '').slice(0, 19).replace('T', ' ') + '</div>' +
+                    '<div><strong>Total:</strong> Rp ' + Number(tx.total).toLocaleString() + '</div>' +
+                    '<div><strong>Bayar:</strong> Rp ' + Number(tx.bayar).toLocaleString() + '</div>' +
+                    '<div><strong>Kembalian:</strong> Rp ' + Number(tx.kembalian).toLocaleString() + '</div>' +
+                    '<div><strong>Metode:</strong> ' + (tx.metode_pembayaran || '-') + '</div>';
+            }
+
+            // Load detail items
+            callGAS('GET_TRANSACTION_DETAIL', { transaction_id: transactionId }).then(function(res) {
+                if (res.success && res.data && res.data.length > 0) {
+                    var items = res.data;
+                    var total = 0;
+                    document.getElementById('detail-items').innerHTML = items.map(function(d) {
+                        var subtotal = Number(d.subtotal) || 0;
+                        total += subtotal;
+                        return '<tr>' +
+                            '<td class="py-2">' + d.nama_barang + '</td>' +
+                            '<td class="py-2 text-right">Rp ' + Number(d.harga_jual).toLocaleString() + '</td>' +
+                            '<td class="py-2 text-center">' + d.qty + '</td>' +
+                            '<td class="py-2 text-right">Rp ' + subtotal.toLocaleString() + '</td>' +
+                        '</tr>';
+                    }).join('');
+                    document.getElementById('detail-total').textContent = 'Rp ' + total.toLocaleString();
+                } else {
+                    document.getElementById('detail-items').innerHTML =
+                        '<tr><td colspan="4" class="py-4 text-center text-gray-400">Detail tidak tersedia</td></tr>';
+                    document.getElementById('detail-error').textContent = res.message || '';
+                }
+            });
+        }
+
+        function closeDetail() {
+            document.getElementById('detail-modal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<aside id="sidebar" class="w-64 bg-white shadow-lg min-h-screen flex flex-col fixed md:relative z-30 -translate-x-full md:translate-x-0">
+    <div class="p-4 border-b">
+        <h2 class="font-bold text-lg text-gray-800">Menu</h2>
+    </div>
+    <nav class="flex-1 p-4 space-y-2">
+        <a href="index.html" class="block px-4 py-2 rounded hover:bg-blue-50 text-gray-700 hover:text-blue-600">
+            📊 Dashboard
+        </a>
+        <a href="pos.html" class="block px-4 py-2 rounded hover:bg-blue-50 text-gray-700 hover:text-blue-600">
+            🛒 POS
+        </a>
+        <a href="items.html" class="block px-4 py-2 rounded hover:bg-blue-50 text-gray-700 hover:text-blue-600">
+            📦 Barang
+        </a>
+        <a href="stock.html" class="block px-4 py-2 rounded hover:bg-blue-50 text-gray-700 hover:text-blue-600">
+            📊 Stok
+        </a>
+        <a href="transactions.html" class="block px-4 py-2 rounded hover:bg-blue-50 text-gray-700 hover:text-blue-600">
+            💳 Transaksi
+        </a>
+    </nav>
+</aside>
+
+<!-- Overlay for mobile -->
+<div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-20 hidden md:hidden" onclick="toggleSidebar()"></div>

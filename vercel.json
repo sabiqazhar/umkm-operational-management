@@ -1,0 +1,6 @@
+{
+  "name": "umkm-pos",
+  "buildCommand": "echo \"var CONFIG_GAS_API_URL = '$GAS_API_URL';\" > static/js/config.js",
+  "outputDirectory": ".",
+  "framework": null
+}

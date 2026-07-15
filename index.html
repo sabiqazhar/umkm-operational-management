@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - UMKM POS</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="static/js/config.js"></script>
+    <script src="static/js/api.js"></script>
+    <script src="static/js/auth.js"></script>
+    <style>
+        #sidebar { transition: transform 0.2s ease; }
+        @media (min-width: 768px) { #sidebar { transform: translateX(0); } }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex">
+    <!-- Sidebar -->
+    <div id="sidebar-container" hx-trigger="load" hx-get="partials/sidebar.html" hx-swap="innerHTML"></div>
+
+    <div class="flex-1 flex flex-col min-h-screen">
+        <!-- Navbar -->
+        <div id="navbar-container" hx-trigger="load" hx-get="partials/navbar.html" hx-swap="innerHTML"></div>
+
+        <main class="flex-1 p-6">
+            <div class="max-w-7xl mx-auto">
+                <h2 class="text-2xl font-bold mb-6">Dashboard</h2>
+
+                <!-- Dashboard data loaded via callGAS -->
+                <div id="dash-data"></div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-sm text-gray-500">Penjualan Hari Ini</p>
+                        <p id="today-sales" class="text-2xl font-bold mt-1">Memuat...</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-sm text-gray-500">Total Transaksi</p>
+                        <p id="today-count" class="text-2xl font-bold mt-1">Memuat...</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-sm text-gray-500">Stok Menipis</p>
+                        <p id="low-stock-count" class="text-2xl font-bold mt-1 text-red-600">Memuat...</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-sm text-gray-500">Total Produk</p>
+                        <p id="total-products" class="text-2xl font-bold mt-1">Memuat...</p>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-lg font-semibold mb-4">Aksi Cepat</h2>
+                    <div class="flex flex-wrap gap-4">
+                        <a href="pos.html" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700">+ Transaksi Baru</a>
+                        <a href="items.html" class="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700">+ Tambah Produk</a>
+                        <a href="stock.html" class="bg-yellow-500 text-white px-6 py-3 rounded-lg hover:bg-yellow-600">Kelola Stok</a>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Load dashboard data via API
+        callGAS('DAILY_SALES_REPORT', {}).then(function(res) {
+            if (res.success && res.data) {
+                document.getElementById('today-sales').textContent =
+                    'Rp ' + Number(res.data.total_sales || 0).toLocaleString();
+                document.getElementById('today-count').textContent =
+                    res.data.transaction_count || 0;
+                document.getElementById('low-stock-count').textContent =
+                    res.data.low_stock_count || 0;
+                document.getElementById('total-products').textContent =
+                    res.data.total_products || 0;
+            }
+        }).catch(function() {
+            document.getElementById('today-sales').textContent = 'Gagal muat';
+        });
+    </script>
+</body>
+</html>
