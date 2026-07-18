@@ -110,8 +110,9 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium">Stok Awal</label>
-                    <input type="number" name="stok_sekarang" id="form-stok"
-                        class="w-full border rounded-md px-3 py-2">
+                    <input type="number" name="stok_sekarang" id="form-stok" value="0" readonly
+                        class="w-full border rounded-md px-3 py-2 bg-gray-100 cursor-not-allowed">
+                    <p class="text-xs text-gray-400 mt-1">Gunakan Kelola Stok untuk stok masuk/keluar</p>
                 </div>
             </form>
             <div class="flex gap-2 mt-4">
@@ -186,7 +187,7 @@
                 document.getElementById('form-kategori').value = item.kategori || '';
                 document.getElementById('form-harga-beli').value = item.harga_beli || '';
                 document.getElementById('form-harga-jual').value = item.harga_jual || '';
-                document.getElementById('form-stok').value = item.stok_sekarang || '';
+                document.getElementById('form-stok').value = '0';
             } else {
                 document.getElementById('modal-title').textContent = 'Tambah Barang';
                 document.getElementById('form-item-id').value = '';
@@ -195,7 +196,7 @@
                 document.getElementById('form-kategori').value = '';
                 document.getElementById('form-harga-beli').value = '';
                 document.getElementById('form-harga-jual').value = '';
-                document.getElementById('form-stok').value = '';
+                document.getElementById('form-stok').value = '0';
             }
         }
 
