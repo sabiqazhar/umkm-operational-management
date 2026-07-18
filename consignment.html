@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#2563eb">
+    <title>Barang Titipan - UMKM POS</title>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="static/js/config.js"></script>
+    <script src="static/js/api.js"></script>
+    <script src="static/js/auth.js"></script>
+    <style>
+        #sidebar { transition: transform 0.2s ease; }
+        @media (min-width: 768px) { #sidebar { transform: translateX(0); } }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex">
+    <div id="sidebar-container" hx-trigger="load" hx-get="partials/sidebar.html" hx-swap="innerHTML"></div>
+
+    <div class="flex-1 flex flex-col min-h-screen">
+        <div id="navbar-container" hx-trigger="load" hx-get="partials/navbar.html" hx-swap="innerHTML"></div>
+
+        <main class="flex-1 p-6">
+            <div class="max-w-7xl mx-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold">Barang Titipan (Consignment)</h2>
+                    <button onclick="openPaymentModal()"
+                        class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                        + Bayar Titipan
+                    </button>
+                </div>
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-sm text-gray-500">Total Penjualan Titipan</p>
+                        <p id="total-sold" class="text-2xl font-bold mt-1">Memuat...</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-sm text-gray-500">Sudah Dibayar</p>
+                        <p id="total-paid" class="text-2xl font-bold mt-1 text-green-600">Memuat...</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <p class="text-sm text-gray-500">Sisa Harus Dibayar</p>
+                        <p id="remaining-due" class="text-2xl font-bold mt-1">Memuat...</p>
+                    </div>
+                </div>
+
+                <!-- Breakdown Table -->
+                <div class="bg-white rounded-lg shadow mb-8">
+                    <div class="px-6 py-4 border-b">
+                        <h3 class="font-semibold">Rincian Barang Titipan Terjual</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[500px]">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Barang</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Qty Terjual</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody id="breakdown-table" class="divide-y divide-gray-200">
+                                <tr><td colspan="3" class="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Payment History -->
+                <div class="bg-white rounded-lg shadow">
+                    <div class="px-6 py-4 border-b">
+                        <h3 class="font-semibold">Riwayat Pembayaran</h3>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[700px]">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Settlement ID</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Tanggal</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Jumlah</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Periode</th>
+                                    <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Qty</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Catatan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payment-history" class="divide-y divide-gray-200">
+                                <tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">Memuat...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Payment Modal -->
+    <div id="payment-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-lg shadow-lg w-full max-w-md mx-4 p-6">
+            <h3 class="text-lg font-bold mb-4">Bayar Titipan</h3>
+            <form id="payment-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Jumlah Bayar</label>
+                    <input type="number" id="pay-amount" required min="1"
+                        class="mt-1 w-full border rounded-md px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Qty (opsional)</label>
+                    <input type="number" id="pay-qty" min="1" placeholder="Jumlah barang"
+                        class="mt-1 w-full border rounded-md px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Periode</label>
+                    <input type="text" id="pay-periode" placeholder="Contoh: Juli 2024"
+                        class="mt-1 w-full border rounded-md px-3 py-2">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Catatan</label>
+                    <textarea id="pay-catatan" rows="2" placeholder="Contoh: Transfer ke Rekening Sales A"
+                        class="mt-1 w-full border rounded-md px-3 py-2"></textarea>
+                </div>
+                <div id="pay-result" class="text-sm"></div>
+                <div class="flex gap-3 justify-end">
+                    <button type="button" onclick="closePaymentModal()"
+                        class="px-4 py-2 border rounded-md hover:bg-gray-50">Batal</button>
+                    <button type="submit"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // ── Load Summary ────────────────────────────────────────────────────
+        function loadSummary() {
+            callGAS('GET_CONSIGNMENT_SUMMARY', {}).then(function(res) {
+                if (res.success && res.data) {
+                    document.getElementById('total-sold').textContent = formatIDR(res.data.total_sold_value);
+                    document.getElementById('total-paid').textContent = formatIDR(res.data.total_paid_value);
+                    var dueEl = document.getElementById('remaining-due');
+                    var due = res.data.remaining_due || 0;
+                    dueEl.textContent = formatIDR(due);
+                    dueEl.className = 'text-2xl font-bold mt-1 ' + (due > 0 ? 'text-red-600' : 'text-green-600');
+
+                    // Breakdown table
+                    var tbody = document.getElementById('breakdown-table');
+                    var bd = res.data.breakdown || [];
+                    if (bd.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="3" class="px-4 py-8 text-center text-gray-400">Belum ada barang titipan terjual</td></tr>';
+                    } else {
+                        tbody.innerHTML = bd.map(function(b) {
+                            return '<tr>' +
+                                '<td class="px-4 py-3">' + (b.nama_barang || 'Item #' + b.item_id) + '</td>' +
+                                '<td class="px-4 py-3 text-right">' + b.qty + '</td>' +
+                                '<td class="px-4 py-3 text-right">' + formatIDR(b.subtotal) + '</td>' +
+                                '</tr>';
+                        }).join('');
+                    }
+                }
+            });
+        }
+
+        // ── Payment History ─────────────────────────────────────────────────
+        function loadPaymentHistory() {
+            callGAS('GET_CONSIGNMENT_PAYMENTS', {}).then(function(res) {
+                var tbody = document.getElementById('payment-history');
+                if (!res.success || !res.data || res.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-8 text-center text-gray-400">Belum ada pembayaran</td></tr>';
+                    return;
+                }
+                tbody.innerHTML = res.data.map(function(p) {
+                    var tgl = (p.created_at || '').slice(0, 19).replace('T', ' ');
+                    return '<tr>' +
+                        '<td class="px-4 py-3 text-sm font-mono">' + p.settlement_id + '</td>' +
+                        '<td class="px-4 py-3 text-sm">' + tgl + '</td>' +
+                        '<td class="px-4 py-3 text-right">' + formatIDR(p.total_amount) + '</td>' +
+                        '<td class="px-4 py-3">' + (p.periode || '-') + '</td>' +
+                        '<td class="px-4 py-3 text-right">' + (p.qty || 0) + '</td>' +
+                        '<td class="px-4 py-3 text-sm text-gray-500">' + (p.catatan || '-') + '</td>' +
+                        '</tr>';
+                }).join('');
+            });
+        }
+
+        // ── Payment Modal ───────────────────────────────────────────────────
+        function openPaymentModal() {
+            // Pre-fill amount with remaining due
+            var dueText = document.getElementById('remaining-due').textContent;
+            var due = parseInt(dueText.replace(/[^0-9]/g, '')) || 0;
+            if (due > 0) document.getElementById('pay-amount').value = due;
+            document.getElementById('pay-result').innerHTML = '';
+            document.getElementById('payment-modal').classList.remove('hidden');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('payment-modal').classList.add('hidden');
+            document.getElementById('payment-form').reset();
+        }
+
+        document.getElementById('payment-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            var amount = document.getElementById('pay-amount').value;
+            if (!amount || Number(amount) <= 0) {
+                document.getElementById('pay-result').innerHTML = '<span class="text-red-600">Jumlah bayar harus diisi</span>';
+                return;
+            }
+
+            document.getElementById('pay-result').innerHTML = '<span class="text-gray-500">Memproses...</span>';
+
+            callGAS('CREATE_CONSIGNMENT_PAYMENT', {
+                amount: amount,
+                qty: document.getElementById('pay-qty').value || 0,
+                periode: document.getElementById('pay-periode').value || '',
+                catatan: document.getElementById('pay-catatan').value || ''
+            }).then(function(res) {
+                if (res.success) {
+                    showToast('Pembayaran titipan berhasil: ' + res.data.settlement_id, 'success');
+                    closePaymentModal();
+                    loadSummary();
+                    loadPaymentHistory();
+                } else {
+                    document.getElementById('pay-result').innerHTML =
+                        '<span class="text-red-600">' + (res.message || 'Gagal') + '</span>';
+                }
+            });
+        });
+
+        // ── Init ────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', function() {
+            loadSummary();
+            loadPaymentHistory();
+        });
+    </script>
+</body>
+</html>
